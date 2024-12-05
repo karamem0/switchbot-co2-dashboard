@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "msedge",
+      "request": "launch",
+      "name": "Launch Client",
+      "url": "https://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "runtimeArgs": [
+        "--guest"
+      ],
+      "preLaunchTask": "react-start",
+      "postDebugTask": "react-terminate"
+    }
+  ]
+}
