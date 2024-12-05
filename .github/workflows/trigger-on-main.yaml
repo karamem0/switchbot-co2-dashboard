@@ -1,0 +1,46 @@
+name: Trigger on main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  run:
+    name: Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repos
+        uses: actions/checkout@v4
+      - name: Update .env
+        shell: pwsh
+        run: |
+          $content = Get-Content -Path ${{env.FILE_PATH}}
+          $content = $content -Replace "{{MICROSOFT_CLIENT_APP_ID}}", "${{vars.MICROSOFT_CLIENT_APP_ID}}"
+          $content = $content -Replace "{{MICROSOFT_SERVER_APP_ID}}", "${{vars.MICROSOFT_SERVER_APP_ID}}"
+          $content = $content -Replace "{{MICROSOFT_TENANT_ID}}", "${{vars.MICROSOFT_TENANT_ID}}"
+          Out-File -FilePath ${{env.FILE_PATH}} -InputObject $content -Encoding UTF8
+        env:
+          FILE_PATH: source/client/.env
+      - name: Restore source
+        run: dotnet restore
+        working-directory: source/server
+      - name: Build source
+        shell: pwsh
+        run: |
+          dotnet publish `
+            Karamem0.SwitchBot.Web/Karamem0.SwitchBot.Web.csproj `
+            -c Release `
+            -p:PublishDir=${{github.workspace}}/source/server/build
+        working-directory: source/server
+      - name: Connect to Azure
+        uses: azure/login@a65d910e8af852a8061c627c456678983e180302
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}}
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@de617f46172a906d0617bb0e50d81e9e3aec24c8
+        with:
+          app-name: ${{vars.AZURE_WEB_APP_NAME}}
+          package: source/server/build
