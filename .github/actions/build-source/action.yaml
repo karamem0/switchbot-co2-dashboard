@@ -1,0 +1,44 @@
+name: Build source
+
+description: This GitHub Action builds sources and uploads its artifacts.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js 22.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22.x
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Update .env
+      shell: pwsh
+      run: |
+        $content = Get-Content -Path ${{env.FILE_PATH}}
+        $content = $content -Replace "{{MICROSOFT_CLIENT_APP_ID}}", "${{env.MICROSOFT_CLIENT_APP_ID}}"
+        $content = $content -Replace "{{MICROSOFT_SERVER_APP_ID}}", "${{env.MICROSOFT_SERVER_APP_ID}}"
+        $content = $content -Replace "{{MICROSOFT_TENANT_ID}}", "${{env.MICROSOFT_TENANT_ID}}"
+        $content = $content -Replace "{{TELEMETRY_CONNECTION_STRING}}", "${{env.TELEMETRY_CONNECTION_STRING}}"
+        Out-File -FilePath ${{env.FILE_PATH}} -InputObject $content -Encoding UTF8
+      env:
+        FILE_PATH: source/client/.env
+    - name: Restore source
+      shell: pwsh
+      run: dotnet restore
+      working-directory: source/server
+    - name: Build source
+      shell: pwsh
+      run: |
+        dotnet publish `
+          Karamem0.SwitchBot.Web/Karamem0.SwitchBot.Web.csproj `
+          -c Release `
+          -p:PublishDir=${{github.workspace}}/source/server/build
+      working-directory: source/server
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build
+        path: source/server/build
+        include-hidden-files: true
